@@ -7,14 +7,14 @@ from nim_game.common.enumerations import Players
 
 
 class GameNim:
-    _environment: EnvironmentNim  # состояния кучек
-    _agent: Agent  # бот
+    _environment: EnvironmentNim        # состояния кучек
+    _agent: Agent                       # бот
 
     def __init__(self, path_to_config: str) -> None:
-        with open(path_to_config) as f:
-            data = json.load(f)
-            self._agent = Agent(data["opponent_level"])
-            self._environment = EnvironmentNim(data["heaps_amount"])
+        with open(path_to_config) as file:
+            json_file = json.load(file)
+            self._agent = Agent(json_file["opponent_level"])
+            self._environment = EnvironmentNim(json_file["heaps_amount"])
 
     def make_steps(self, player_step: NimStateChange) -> GameState:
         """
@@ -24,8 +24,7 @@ class GameNim:
         """
 
         game_ = GameState()
-
-        self._environment.change_state(player_step)
+        self._environment.change_state(player_step)  # игрок сходил
 
         if self.is_game_finished():
             game_.heaps_state = self.heaps_state
@@ -33,17 +32,15 @@ class GameNim:
             game_.winner = Players.USER
             return game_
 
-        bot_step = self._agent.make_step(self.heaps_state)
+        bot_step = self._agent.make_step(self.heaps_state)  # робот
         self._environment.change_state(bot_step)
 
+        game_.heaps_state = self.heaps_state
+        game_.opponent_step = bot_step
         if self.is_game_finished():
-            game_.heaps_state = self.heaps_state
-            game_.opponent_step = player_step
             game_.winner = Players.BOT
             return game_
 
-        game_.heaps_state = self.heaps_state
-        game_.opponent_step = player_step
         game_.winner = None
 
         return game_
@@ -54,7 +51,7 @@ class GameNim:
 
         :return: True - игра окончена, False - иначе
         """
-        return len(self.heaps_state) == 0
+        return not sum(self.heaps_state)  # раньше кринж был тут
 
     @property
     def heaps_state(self) -> list[int]:

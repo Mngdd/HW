@@ -1,4 +1,4 @@
-from random import randint
+from random import randint, choice
 
 from nim_game.common.enumerations import AgentLevels
 from nim_game.common.models import NimStateChange
@@ -9,7 +9,7 @@ class Agent:
     В этом классе реализованы стратегии игры для уровней сложности
     """
 
-    _level: AgentLevels  # уровень сложности
+    _level: AgentLevels         # уровень сложности
 
     def __init__(self, level: str) -> None:
         if level not in (AgentLevels.EASY.value,
@@ -19,12 +19,14 @@ class Agent:
         self._level = AgentLevels(level)
 
     def make_step(self, state_curr: list[int]) -> NimStateChange:
+
         """
         Сделать шаг, соотвутствующий уровню сложности
 
         :param state_curr: список целых чисел - состояние кучек
         :return: стуктуру NimStateChange - описание хода
         """
+
         match self._level:
             case AgentLevels.EASY:
                 return self.__easy_mode_turn(state_curr)
@@ -34,42 +36,37 @@ class Agent:
                 return self.__hard_mode_turn(state_curr)
 
     @staticmethod
-    def __easy_mode_turn(state_curr: list[int]) -> NimStateChange:
-        choice = NimStateChange(0, 0)
+    def __easy_mode_turn(state_curr):
+        non_empty_heaps = []
+        for i in range(len(state_curr)):
+            if state_curr[i] != 0:
+                non_empty_heaps.append(i)
+        heap_id = choice(non_empty_heaps)
 
-        choice.heap_id = randint(1, len(state_curr))
-        choice.decrease = randint(1, state_curr[choice.heap_id])
-
-        return choice
-
-    @staticmethod
-    def __hard_mode_turn(state_curr: list[int]) -> NimStateChange:
-        choice = NimStateChange(0, 0)
-
-        if Agent.__xor_sum(state_curr) == 0:  # проигрышное положение
-            return Agent.__easy_mode_turn(state_curr)
-
-        curr_xor_sum = Agent.__xor_sum(state_curr)  # супер алгос из инета 3000
-        bin_xor = bin(Agent.__xor_sum(state_curr))[2:][::-1]
-
-        for i in range(1, len(state_curr)):
-            temp_str = bin(state_curr[i])[2:][::-1]
-            tn = len(bin_xor)
-
-            if (len(temp_str) >= len(bin_xor)) and (temp_str[tn - 1] == bin_xor[tn - 1]):
-                choice.heap_id = i
-                choice.decrease = state_curr[i] - (state_curr[i] ^ curr_xor_sum)
-
-                return choice
+        return NimStateChange(heap_id + 1, randint(1, state_curr[heap_id]))
 
     @staticmethod
-    def __normal_mode_turn(state_curr: list[int]) -> NimStateChange:
+    def __normal_mode_turn(state_curr):
         if randint(0, 1):
             return Agent.__easy_mode_turn(state_curr)
         return Agent.__hard_mode_turn(state_curr)
 
     @staticmethod
-    def __xor_sum(state_curr: list[int]) -> int:
+    def __hard_mode_turn(state_curr):  # до этого косячный был немног, пофиксил
+        if Agent.__xor_sum(state_curr) == 0:
+            return Agent.__easy_mode_turn(state_curr)
+
+        for heap_id in range(len(state_curr)):
+            for dec in range(1, state_curr[heap_id] + 1):
+                state_curr[heap_id] -= dec
+                if Agent.__xor_sum(state_curr) == 0:
+                    state_curr[heap_id] += dec
+                    return NimStateChange(heap_id + 1, dec)
+                state_curr[heap_id] += dec
+        return Agent.__easy_mode_turn(state_curr)
+
+    @staticmethod
+    def __xor_sum(state_curr):
         ans = 0
         for i in state_curr:
             ans ^= i
